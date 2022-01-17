@@ -1,9 +1,10 @@
 package com.epam.bd201;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
@@ -11,29 +12,31 @@ import org.apache.kafka.streams.kstream.KStream;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
-public class KStreamsApplication {
+import static org.apache.kafka.streams.StreamsConfig.*;
 
-    public static void main(String[] args) throws Exception {
+public class KStreamsApplication {
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    public static void main(String[] args) {
 
         Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "INSERT_YOUR_APP_ID");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "INSERT_YOUR_BOOTSTRAP_IP:PORT");
-        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, "INSERT_YOUR_KEY_SERDE_CLASS_HERE");
-        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, "INSERT_YOUR_VALUE_SERDE_CLASS_HERE");
-        //If needed
-        props.put("schema.registry.url", "INSERT_YOUR_SCHEMA_REGISTRY_IP:PORT");
+        props.put(APPLICATION_ID_CONFIG, "expedia-stream");
+        props.put(BOOTSTRAP_SERVERS_CONFIG, "10.244.0.7:9092,10.244.0.8:9092,10.244.1.4:9092");
+        props.put(BOOTSTRAP_SERVERS_CONFIG, "bdccdev-1f46a8a5.hcp.westeurope.azmk8s.io:9092");
+        props.put(DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        props.put(DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        props.put("schema.registry.url", "10.244.0.9:8081");
 
-        final String INPUT_TOPIC_NAME = "";
-        final String OUTPUT_TOPIC_NAME = "";
+        final String INPUT_TOPIC_NAME = "expedia";
+        final String OUTPUT_TOPIC_NAME = "expedia_ext";
 
         final StreamsBuilder builder = new StreamsBuilder();
 
         final KStream<String, String> input_records = builder.stream(INPUT_TOPIC_NAME, Consumed.with(Serdes.String(), Serdes.String()));
 
-        //Transform your records here
-        //input_records.map();
-
-        input_records.to(OUTPUT_TOPIC_NAME);
+        input_records.mapValues(KStreamsApplication::toHotelVisit)
+                .mapValues(HotelVisit::setStayDurationAndType)
+                .to(OUTPUT_TOPIC_NAME);
 
         final Topology topology = builder.build();
         System.out.println(topology.describe());
@@ -57,5 +60,13 @@ public class KStreamsApplication {
             System.exit(1);
         }
         System.exit(0);
+    }
+
+    private static HotelVisit toHotelVisit(String value) {
+        try {
+            return objectMapper.readValue(value, HotelVisit.class);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Deserialization error");
+        }
     }
 }

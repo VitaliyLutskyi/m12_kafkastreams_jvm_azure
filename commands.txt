@@ -1,0 +1,18 @@
+terraform init
+terraform import azurerm_resource_group.bdcc /subscriptions/c72b0141-5434-4b91-a20d-2fe85bd32781/resourceGroups/rg-dev-westeurope-vsps
+terraform plan -out terraform.plan
+terraform apply terraform.plan
+
+az aks get-credentials --resource-group rg-dev-westeurope-vsps --name aks-dev-westeurope
+kubectl create namespace confluent
+kubectl config set-context --current --namespace confluent
+
+helm repo add confluentinc https://packages.confluent.io/helm
+helm repo update
+helm upgrade --install confluent-operator confluentinc/confluent-for-kubernetes
+
+kubectl apply -f ./confluent-platform.yaml
+
+kubectl get pods -o wide
+
+kubectl port-forward controlcenter-0 9021:9021

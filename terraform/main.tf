@@ -1,6 +1,10 @@
 # Setup azurerm as a state backend
 terraform {
-  backend "azurerm" {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "=2.62.0"
+    }
   }
 }
 
@@ -12,7 +16,7 @@ provider "azurerm" {
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_resource_group" "bdcc" {
-  name = "rg-${var.ENV}-${var.LOCATION}"
+  name = "rg-${var.ENV}-${var.LOCATION}-vsps"
   location = var.LOCATION
 
   lifecycle {
@@ -25,45 +29,6 @@ resource "azurerm_resource_group" "bdcc" {
   }
 }
 
-resource "azurerm_storage_account" "bdcc" {
-  depends_on = [
-    azurerm_resource_group.bdcc]
-
-  name = "st${var.ENV}${var.LOCATION}"
-  resource_group_name = azurerm_resource_group.bdcc.name
-  location = azurerm_resource_group.bdcc.location
-  account_tier = "Standard"
-  account_replication_type = var.STORAGE_ACCOUNT_REPLICATION_TYPE
-  is_hns_enabled = "true"
-
-  network_rules {
-    default_action = "Allow"
-    ip_rules = values(var.IP_RULES)
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  tags = {
-    region = var.BDCC_REGION
-    env = var.ENV
-  }
-}
-
-resource "azurerm_storage_data_lake_gen2_filesystem" "gen2_data" {
-  depends_on = [
-    azurerm_storage_account.bdcc]
-
-  name = "data"
-  storage_account_id = azurerm_storage_account.bdcc.id
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-
 resource "azurerm_kubernetes_cluster" "bdcc" {
   depends_on = [
     azurerm_resource_group.bdcc]
@@ -75,8 +40,8 @@ resource "azurerm_kubernetes_cluster" "bdcc" {
 
   default_node_pool {
     name       = "default"
-    node_count = 1
-    vm_size    = "Standard_D2_v2"
+    node_count = 3
+    vm_size    = "Standard_D3_v2"
   }
 
   identity {

@@ -56,12 +56,6 @@ For running the azure connector, you can create your own docker image. Create yo
   kubectl apply -f ./confluent-platform.yaml
   ```
 
-- Install a sample producer app and topic:
-
-  ```cmd
-  kubectl apply -f ./producer-app-data.yaml
-  ```
-
 - Check that everything is deployed:
 
   ```cmd
@@ -97,7 +91,7 @@ For running the azure connector, you can create your own docker image. Create yo
 
 - Build [KStream Docker Image](Dockerfile) - insert valid Azure image registry here
   ```cmd
-  $ docker build -t image-registry/your-project-id/kstream-app:1.0
+  $ docker build -t image-registry/your-project-id/kstream-app:1.0 ./
   ```
 
 - Push KStream image to Container Registry
